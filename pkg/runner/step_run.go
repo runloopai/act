@@ -34,6 +34,44 @@ func (sr *stepRun) main() common.Executor {
 	return runStepExecutor(sr, stepStageMain, common.NewPipelineExecutor(
 		sr.setupShellCommandExecutor(),
 		func(ctx context.Context) error {
+			rc := sr.getRunContext()
+			
+			// Output run command details in dryrun mode with --show-details
+			if common.Dryrun(ctx) && rc.Config.ShowDetails {
+				logger := common.Logger(ctx)
+				
+				// Output the raw run command
+				if sr.Step.Run != "" {
+					logger.Infof("*DRYRUN-COMMAND* RUN: %s", sr.Step.Run)
+				}
+				
+				// Output shell information
+				if sr.Step.Shell != "" {
+					logger.Infof("*DRYRUN-COMMAND* SHELL: %s", sr.Step.Shell)
+				}
+				
+				// Output working directory if different from default
+				if sr.WorkingDirectory != "" {
+					logger.Infof("*DRYRUN-COMMAND* WORKDIR: %s", sr.WorkingDirectory)
+				}
+				
+				// Output step-level environment variables
+				stepModel := sr.getStepModel()
+				stepEnv := stepModel.Environment()
+				if len(stepEnv) > 0 {
+					for k, v := range stepEnv {
+						// Interpolate the environment variable value
+						interpolatedValue := rc.NewStepExpressionEvaluator(ctx, sr).Interpolate(ctx, v)
+						logger.Infof("*DRYRUN-ENV* %s=%s", k, interpolatedValue)
+					}
+				}
+			}
+			
+			// Output parsable commands for bash script generation
+			if common.Dryrun(ctx) {
+				sr.outputParsableCommands(ctx)
+			}
+			
 			sr.getRunContext().ApplyExtraPath(ctx, &sr.env)
 			if he, ok := sr.getRunContext().JobContainer.(*container.HostEnvironment); ok && he != nil {
 				return he.ExecWithCmdLine(sr.cmd, sr.cmdline, sr.env, "", sr.WorkingDirectory)(ctx)
@@ -222,4 +260,40 @@ func (sr *stepRun) setupWorkingDirectory(ctx context.Context) {
 		workingdirectory = rc.Run.Workflow.Defaults.Run.WorkingDirectory
 	}
 	sr.WorkingDirectory = workingdirectory
+}
+
+func (sr *stepRun) outputParsableCommands(ctx context.Context) {
+	rc := sr.getRunContext()
+	logger := common.Logger(ctx).WithField("command_output", true)
+	
+	// Output step-level environment variables
+	stepModel := sr.getStepModel()
+	stepEnv := stepModel.Environment()
+	if len(stepEnv) > 0 {
+		for k, v := range stepEnv {
+			// Interpolate the environment variable value
+			interpolatedValue := rc.NewStepExpressionEvaluator(ctx, sr).Interpolate(ctx, v)
+			logger.Infof("ACT_ENV: export %s=%s", k, interpolatedValue)
+		}
+	}
+	
+	// Output working directory change if needed
+	if sr.WorkingDirectory != "" {
+		logger.Infof("ACT_WORKDIR: cd %s", sr.WorkingDirectory)
+	}
+	
+	// Output the actual run command(s)
+	if sr.Step.Run != "" {
+		// Interpolate the run command
+		script := rc.NewStepExpressionEvaluator(ctx, sr).Interpolate(ctx, sr.Step.Run)
+		
+		// Split multi-line commands and output each line
+		lines := strings.Split(script, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" && !strings.HasPrefix(line, "#") {
+				logger.Infof("ACT_RUN: %s", line)
+			}
+		}
+	}
 }

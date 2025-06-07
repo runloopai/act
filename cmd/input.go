@@ -63,6 +63,7 @@ type Input struct {
 	localRepository                    []string
 	listOptions                        bool
 	concurrentJobs                     int
+	showDetails                        bool
 }
 
 func (i *Input) resolve(path string) string {

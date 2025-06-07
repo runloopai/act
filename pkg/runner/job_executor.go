@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nektos/act/pkg/common"
@@ -27,8 +28,16 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 
 	steps = append(steps, func(ctx context.Context) error {
 		logger := common.Logger(ctx)
-		if len(info.matrix()) > 0 {
-			logger.Infof("\U0001F9EA  Matrix: %v", info.matrix())
+		matrix := info.matrix()
+		if len(matrix) > 0 {
+			logger.Infof("\U0001F9EA  Matrix: %v", matrix)
+			
+			// Output detailed matrix variables in dryrun mode with --show-details
+			if common.Dryrun(ctx) && rc.Config.ShowDetails {
+				for key, value := range matrix {
+					logger.Infof("*DRYRUN-ENV* %s=%v", key, value)
+				}
+			}
 		}
 		return nil
 	})
@@ -50,6 +59,87 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 		for k, v := range rc.GetEnv() {
 			rc.Env[k] = rc.ExprEval.Interpolate(ctx, v)
 		}
+		
+		// Output environment variables in dryrun mode with --show-details
+		if common.Dryrun(ctx) && rc.Config.ShowDetails {
+			logger := common.Logger(ctx)
+			
+			// Output GitHub context environment variables
+			github := rc.getGithubContext(ctx)
+			if github != nil {
+				logger.Infof("*DRYRUN-ENV* CI=true")
+				logger.Infof("*DRYRUN-ENV* GITHUB_ACTIONS=true")
+				logger.Infof("*DRYRUN-ENV* GITHUB_WORKFLOW=%s", github.Workflow)
+				logger.Infof("*DRYRUN-ENV* GITHUB_RUN_ID=%s", github.RunID)
+				logger.Infof("*DRYRUN-ENV* GITHUB_RUN_NUMBER=%s", github.RunNumber)
+				logger.Infof("*DRYRUN-ENV* GITHUB_ACTOR=%s", github.Actor)
+				logger.Infof("*DRYRUN-ENV* GITHUB_REPOSITORY=%s", github.Repository)
+				logger.Infof("*DRYRUN-ENV* GITHUB_EVENT_NAME=%s", github.EventName)
+				logger.Infof("*DRYRUN-ENV* GITHUB_SHA=%s", github.Sha)
+				logger.Infof("*DRYRUN-ENV* GITHUB_REF=%s", github.Ref)
+				if github.Workspace != "" {
+					logger.Infof("*DRYRUN-ENV* GITHUB_WORKSPACE=%s", github.Workspace)
+				}
+				if github.BaseRef != "" {
+					logger.Infof("*DRYRUN-ENV* GITHUB_BASE_REF=%s", github.BaseRef)
+				}
+				if github.HeadRef != "" {
+					logger.Infof("*DRYRUN-ENV* GITHUB_HEAD_REF=%s", github.HeadRef)
+				}
+			}
+			
+			// Output job-level environment variables
+			for k, v := range rc.Env {
+				// Skip GitHub built-ins that were already shown above
+				if !strings.HasPrefix(k, "GITHUB_") && k != "CI" {
+					logger.Infof("*DRYRUN-ENV* %s=%s", k, v)
+				}
+			}
+		}
+		
+		// Output parsable commands for bash script generation
+		if common.Dryrun(ctx) {
+			cmdLogger := common.Logger(ctx).WithField("command_output", true)
+			
+			// Output GitHub context environment variables
+			github := rc.getGithubContext(ctx)
+			if github != nil {
+				cmdLogger.Infof("ACT_ENV: export CI=true")
+				cmdLogger.Infof("ACT_ENV: export GITHUB_ACTIONS=true")
+				cmdLogger.Infof("ACT_ENV: export GITHUB_WORKFLOW=\"%s\"", github.Workflow)
+				cmdLogger.Infof("ACT_ENV: export GITHUB_RUN_ID=%s", github.RunID)
+				cmdLogger.Infof("ACT_ENV: export GITHUB_RUN_NUMBER=%s", github.RunNumber)
+				cmdLogger.Infof("ACT_ENV: export GITHUB_ACTOR=\"%s\"", github.Actor)
+				cmdLogger.Infof("ACT_ENV: export GITHUB_REPOSITORY=\"%s\"", github.Repository)
+				cmdLogger.Infof("ACT_ENV: export GITHUB_EVENT_NAME=%s", github.EventName)
+				cmdLogger.Infof("ACT_ENV: export GITHUB_SHA=%s", github.Sha)
+				cmdLogger.Infof("ACT_ENV: export GITHUB_REF=\"%s\"", github.Ref)
+				if github.Workspace != "" {
+					cmdLogger.Infof("ACT_ENV: export GITHUB_WORKSPACE=\"%s\"", github.Workspace)
+				}
+				if github.BaseRef != "" {
+					cmdLogger.Infof("ACT_ENV: export GITHUB_BASE_REF=\"%s\"", github.BaseRef)
+				}
+				if github.HeadRef != "" {
+					cmdLogger.Infof("ACT_ENV: export GITHUB_HEAD_REF=\"%s\"", github.HeadRef)
+				}
+			}
+			
+			// Output job-level environment variables
+			for k, v := range rc.Env {
+				// Skip GitHub built-ins that were already shown above
+				if !strings.HasPrefix(k, "GITHUB_") && k != "CI" {
+					cmdLogger.Infof("ACT_ENV: export %s=\"%s\"", k, v)
+				}
+			}
+			
+			// Output matrix variables
+			matrix := info.matrix()
+			for key, value := range matrix {
+				cmdLogger.Infof("ACT_ENV: export %s=\"%v\"", key, value)
+			}
+		}
+		
 		return nil
 	})
 

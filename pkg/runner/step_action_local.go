@@ -36,6 +36,19 @@ func (sal *stepActionLocal) pre() common.Executor {
 
 func (sal *stepActionLocal) main() common.Executor {
 	return runStepExecutor(sal, stepStageMain, func(ctx context.Context) error {
+		// Output action information in dryrun mode with --show-details
+		if common.Dryrun(ctx) && sal.RunContext.Config.ShowDetails {
+			logger := common.Logger(ctx)
+			logger.Infof("*DRYRUN-COMMAND* ACTION: # Local action: %s", sal.Step.Uses)
+			
+			// Output any action inputs
+			eval := sal.RunContext.NewExpressionEvaluator(ctx)
+			for key, value := range sal.Step.With {
+				interpolatedValue := eval.Interpolate(ctx, value)
+				logger.Infof("*DRYRUN-COMMAND* ACTION-INPUT: %s=%s", key, interpolatedValue)
+			}
+		}
+		
 		if common.Dryrun(ctx) {
 			return nil
 		}

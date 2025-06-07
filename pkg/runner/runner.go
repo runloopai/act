@@ -62,6 +62,7 @@ type Config struct {
 	ContainerNetworkMode               docker_container.NetworkMode // the network mode of job containers (the value of --network)
 	ActionCache                        ActionCache                  // Use a custom ActionCache Implementation
 	ConcurrentJobs                     int                          // Number of max concurrent jobs
+	ShowDetails                        bool                         // Show detailed execution info in dryrun mode
 }
 
 func (config *Config) GetConcurrentJobs() int {

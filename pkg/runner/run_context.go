@@ -656,6 +656,33 @@ func (rc *RunContext) startContainer() common.Executor {
 	return func(ctx context.Context) error {
 		ctx, cancel := common.EarlyCancelContext(ctx)
 		defer cancel()
+		
+		// Output container information in dryrun mode with --show-details
+		if common.Dryrun(ctx) && rc.Config.ShowDetails {
+			logger := common.Logger(ctx)
+			
+			if rc.IsHostEnv(ctx) {
+				logger.Infof("*DRYRUN-CONTAINER* ENVIRONMENT: host")
+			} else {
+				image := rc.platformImage(ctx)
+				if image != "" {
+					logger.Infof("*DRYRUN-CONTAINER* IMAGE: %s", image)
+				}
+				
+				// Show runs-on information
+				for _, runsOn := range rc.runsOnPlatformNames(ctx) {
+					if runsOn != "" {
+						logger.Infof("*DRYRUN-CONTAINER* RUNS-ON: %s", runsOn)
+					}
+				}
+				
+				// Show container architecture if specified
+				if rc.Config.ContainerArchitecture != "" {
+					logger.Infof("*DRYRUN-CONTAINER* ARCHITECTURE: %s", rc.Config.ContainerArchitecture)
+				}
+			}
+		}
+		
 		if rc.IsHostEnv(ctx) {
 			return rc.startHostEnvironment()(ctx)
 		}
