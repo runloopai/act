@@ -109,7 +109,7 @@ func (cr *containerReference) Pull(forcePull bool) common.Executor {
 				Platform:  cr.input.Platform,
 				Username:  cr.input.Username,
 				Password:  cr.input.Password,
-			}),
+			}).IfNot(common.Dryrun),
 		)
 }
 
@@ -280,6 +280,9 @@ func (cr *containerReference) connect() common.Executor {
 		if cr.cli != nil {
 			return nil
 		}
+		if common.Dryrun(ctx) {
+			return nil
+		}
 		cli, err := GetDockerClient(ctx)
 		if err != nil {
 			return err
@@ -305,6 +308,9 @@ func (cr *containerReference) Close() common.Executor {
 func (cr *containerReference) find() common.Executor {
 	return func(ctx context.Context) error {
 		if cr.id != "" {
+			return nil
+		}
+		if common.Dryrun(ctx) {
 			return nil
 		}
 		containers, err := cr.cli.ContainerList(ctx, container.ListOptions{
