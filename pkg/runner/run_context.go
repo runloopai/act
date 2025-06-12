@@ -274,6 +274,18 @@ func (rc *RunContext) startJobContainer() common.Executor {
 		envList = append(envList, fmt.Sprintf("%s=%s", "RUNNER_TEMP", "/tmp"))
 		envList = append(envList, fmt.Sprintf("%s=%s", "LANG", "C.UTF-8")) // Use same locale as GitHub Actions
 
+		// Add job-level environment variables  
+		for k, v := range rc.GetEnv() {
+			envList = append(envList, fmt.Sprintf("%s=%s", k, v))
+		}
+
+		// Log environment variables in dryrun mode
+		if common.Dryrun(ctx) {
+			for _, envVar := range envList {
+				logger.Infof("ACT ENV: %s", envVar)
+			}
+		}
+
 		ext := container.LinuxContainerEnvironmentExtensions{}
 		binds, mounts := rc.GetBindsAndMounts()
 

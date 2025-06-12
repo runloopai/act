@@ -558,10 +558,23 @@ func (cr *containerReference) exec(cmd []string, env map[string]string, user, wo
 		}
 
 		logger.Debugf("Exec command '%s'", cmd)
+		
+		// Log the command that would be executed
+		if common.Dryrun(ctx) && len(cmd) > 0 {
+			logger.Infof("ACT RUN: %s", strings.Join(cmd, " "))
+		}
+		
 		isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
 		envList := make([]string, 0)
 		for k, v := range env {
 			envList = append(envList, fmt.Sprintf("%s=%s", k, v))
+		}
+		
+		// Log environment variables that would be set
+		if common.Dryrun(ctx) && len(env) > 0 {
+			for k, v := range env {
+				logger.Infof("ACT ENV: %s=%s", k, v)
+			}
 		}
 
 		var wd string
