@@ -282,7 +282,7 @@ func (rc *RunContext) startJobContainer() common.Executor {
 		// Log environment variables in dryrun mode
 		if common.Dryrun(ctx) {
 			for _, envVar := range envList {
-				logger.Infof("ACT ENV: %s", envVar)
+				logger.Infof("ACT_ENV: %s", envVar)
 			}
 		}
 
@@ -677,7 +677,7 @@ func (rc *RunContext) startContainer() common.Executor {
 		defer cancel()
 		
 		// Output container information in dryrun mode with --show-details
-		if common.Dryrun(ctx) && rc.Config.ShowDetails {
+		if common.Dryrun(ctx) {
 			logger := common.Logger(ctx)
 			
 			if rc.IsHostEnv(ctx) {

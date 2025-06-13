@@ -37,7 +37,7 @@ func (sr *stepRun) main() common.Executor {
 			rc := sr.getRunContext()
 			
 			// Output run command details in dryrun mode with --show-details
-			if common.Dryrun(ctx) && rc.Config.ShowDetails {
+			if common.Dryrun(ctx) {
 				logger := common.Logger(ctx)
 				
 				// Output the raw run command

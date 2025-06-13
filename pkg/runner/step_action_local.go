@@ -37,7 +37,7 @@ func (sal *stepActionLocal) pre() common.Executor {
 func (sal *stepActionLocal) main() common.Executor {
 	return runStepExecutor(sal, stepStageMain, func(ctx context.Context) error {
 		// Output action information in dryrun mode with --show-details
-		if common.Dryrun(ctx) && sal.RunContext.Config.ShowDetails {
+		if common.Dryrun(ctx) {
 			logger := common.Logger(ctx)
 			logger.Infof("*DRYRUN-COMMAND* ACTION: # Local action: %s", sal.Step.Uses)
 			

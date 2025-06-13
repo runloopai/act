@@ -157,7 +157,7 @@ func (sar *stepActionRemote) main() common.Executor {
 		sar.prepareActionExecutor(),
 		runStepExecutor(sar, stepStageMain, func(ctx context.Context) error {
 			// Output action command mapping in dryrun mode with --show-details
-			if common.Dryrun(ctx) && sar.RunContext.Config.ShowDetails {
+			if common.Dryrun(ctx) {
 				sar.outputActionMapping(ctx)
 			}
 			

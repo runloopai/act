@@ -33,7 +33,7 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 			logger.Infof("\U0001F9EA  Matrix: %v", matrix)
 			
 			// Output detailed matrix variables in dryrun mode with --show-details
-			if common.Dryrun(ctx) && rc.Config.ShowDetails {
+			if common.Dryrun(ctx) {
 				for key, value := range matrix {
 					logger.Infof("*DRYRUN-ENV* %s=%v", key, value)
 				}
@@ -61,7 +61,7 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 		}
 		
 		// Output environment variables in dryrun mode with --show-details
-		if common.Dryrun(ctx) && rc.Config.ShowDetails {
+		if common.Dryrun(ctx) {
 			logger := common.Logger(ctx)
 			
 			// Output GitHub context environment variables

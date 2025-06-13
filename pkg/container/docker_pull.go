@@ -28,7 +28,7 @@ func NewDockerPullExecutor(input NewDockerPullExecutorInput) common.Executor {
 			if input.Platform != "" {
 				pullCmd += fmt.Sprintf(" --platform %s", input.Platform)
 			}
-			logger.Infof("ACT DOCKER: %s", pullCmd)
+			logger.Infof("ACT_DOCKER: %s", pullCmd)
 			return nil
 		}
 

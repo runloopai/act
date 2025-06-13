@@ -496,19 +496,19 @@ func (cr *containerReference) create(capAdd []string, capDrop []string) common.E
 
 		// Log the docker create command in dryrun mode
 		if common.Dryrun(ctx) {
-			logger.Infof("ACT DOCKER: docker create --name=%s %s", input.Name, input.Image)
+			logger.Infof("ACT_DOCKER: docker create --name=%s %s", input.Name, input.Image)
 			if len(input.Env) > 0 {
 				for _, env := range input.Env {
-					logger.Infof("ACT DOCKER: --env %s", env)
+					logger.Infof("ACT_DOCKER: --env %s", env)
 				}
 			}
 			if len(input.Binds) > 0 {
 				for _, bind := range input.Binds {
-					logger.Infof("ACT DOCKER: --volume %s", bind)
+					logger.Infof("ACT_DOCKER: --volume %s", bind)
 				}
 			}
 			if input.WorkingDir != "" {
-				logger.Infof("ACT DOCKER: --workdir %s", input.WorkingDir)
+				logger.Infof("ACT_DOCKER: --workdir %s", input.WorkingDir)
 			}
 			return nil
 		}
@@ -588,8 +588,8 @@ func (cr *containerReference) exec(cmd []string, env map[string]string, user, wo
 				dockerCmd += fmt.Sprintf(" --workdir %s", workdir)
 			}
 			dockerCmd += fmt.Sprintf(" %s %s", cr.id, strings.Join(cmd, " "))
-			logger.Infof("ACT DOCKER: %s", dockerCmd)
-			logger.Infof("ACT RUN: %s", strings.Join(cmd, " "))
+			logger.Infof("ACT_DOCKER: %s", dockerCmd)
+			logger.Infof("ACT_RUN: %s", strings.Join(cmd, " "))
 		}
 		
 		isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
@@ -601,7 +601,7 @@ func (cr *containerReference) exec(cmd []string, env map[string]string, user, wo
 		// Log environment variables that would be set
 		if common.Dryrun(ctx) && len(env) > 0 {
 			for k, v := range env {
-				logger.Infof("ACT ENV: %s=%s", k, v)
+				logger.Infof("ACT_ENV: %s=%s", k, v)
 			}
 		}
 
@@ -921,7 +921,7 @@ func (cr *containerReference) start() common.Executor {
 
 		// Log the docker start command in dryrun mode
 		if common.Dryrun(ctx) {
-			logger.Infof("ACT DOCKER: docker start %s", cr.id)
+			logger.Infof("ACT_DOCKER: docker start %s", cr.id)
 			return nil
 		}
 
