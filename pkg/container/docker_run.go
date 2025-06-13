@@ -494,6 +494,25 @@ func (cr *containerReference) create(capAdd []string, capDrop []string) common.E
 			}
 		}
 
+		// Log the docker create command in dryrun mode
+		if common.Dryrun(ctx) {
+			logger.Infof("ACT DOCKER: docker create --name=%s %s", input.Name, input.Image)
+			if len(input.Env) > 0 {
+				for _, env := range input.Env {
+					logger.Infof("ACT DOCKER: --env %s", env)
+				}
+			}
+			if len(input.Binds) > 0 {
+				for _, bind := range input.Binds {
+					logger.Infof("ACT DOCKER: --volume %s", bind)
+				}
+			}
+			if input.WorkingDir != "" {
+				logger.Infof("ACT DOCKER: --workdir %s", input.WorkingDir)
+			}
+			return nil
+		}
+		
 		resp, err := cr.cli.ContainerCreate(ctx, config, hostConfig, networkingConfig, platSpecs, input.Name)
 		if err != nil {
 			return fmt.Errorf("failed to create container: '%w'", err)
@@ -559,8 +578,17 @@ func (cr *containerReference) exec(cmd []string, env map[string]string, user, wo
 
 		logger.Debugf("Exec command '%s'", cmd)
 		
-		// Log the command that would be executed
+		// Log the complete docker exec command that would be executed
 		if common.Dryrun(ctx) && len(cmd) > 0 {
+			dockerCmd := fmt.Sprintf("docker exec")
+			if user != "" {
+				dockerCmd += fmt.Sprintf(" --user %s", user)
+			}
+			if workdir != "" {
+				dockerCmd += fmt.Sprintf(" --workdir %s", workdir)
+			}
+			dockerCmd += fmt.Sprintf(" %s %s", cr.id, strings.Join(cmd, " "))
+			logger.Infof("ACT DOCKER: %s", dockerCmd)
 			logger.Infof("ACT RUN: %s", strings.Join(cmd, " "))
 		}
 		
@@ -890,6 +918,12 @@ func (cr *containerReference) start() common.Executor {
 	return func(ctx context.Context) error {
 		logger := common.Logger(ctx)
 		logger.Debugf("Starting container: %v", cr.id)
+
+		// Log the docker start command in dryrun mode
+		if common.Dryrun(ctx) {
+			logger.Infof("ACT DOCKER: docker start %s", cr.id)
+			return nil
+		}
 
 		if err := cr.cli.ContainerStart(ctx, cr.id, container.StartOptions{}); err != nil {
 			return fmt.Errorf("failed to start container: %w", err)
