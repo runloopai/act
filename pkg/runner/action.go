@@ -408,7 +408,7 @@ func newStepContainer(ctx context.Context, step step, image string, cmd []string
 	if common.Dryrun(ctx) {
 		logger := common.Logger(ctx)
 		for _, envVar := range envList {
-			logger.Infof("ACT ENV: %s", envVar)
+			logger.Infof("ACT_ENV: %s", envVar)
 		}
 	}
 

@@ -404,12 +404,16 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 			return listOptions(cmd)
 		}
 
-		if ret, err := container.GetSocketAndHost(input.containerDaemonSocket); err != nil {
-			log.Warnf("Couldn't get a valid docker connection: %+v", err)
+		if !input.dryrun {
+			if ret, err := container.GetSocketAndHost(input.containerDaemonSocket); err != nil {
+				log.Warnf("Couldn't get a valid docker connection: %+v", err)
+			} else {
+				os.Setenv("DOCKER_HOST", ret.Host)
+				input.containerDaemonSocket = ret.Socket
+				log.Infof("Using docker host '%s', and daemon socket '%s'", ret.Host, ret.Socket)
+			}
 		} else {
-			os.Setenv("DOCKER_HOST", ret.Host)
-			input.containerDaemonSocket = ret.Socket
-			log.Infof("Using docker host '%s', and daemon socket '%s'", ret.Host, ret.Socket)
+			log.Infof("Skipping Docker connection validation in dryrun mode")
 		}
 
 		if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" && input.containerArchitecture == "" {

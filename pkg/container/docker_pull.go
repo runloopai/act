@@ -23,6 +23,12 @@ func NewDockerPullExecutor(input NewDockerPullExecutorInput) common.Executor {
 		logger.Debugf("%sdocker pull %v", logPrefix, input.Image)
 
 		if common.Dryrun(ctx) {
+			// Log the actual docker pull command that would be executed
+			pullCmd := fmt.Sprintf("docker pull %s", input.Image)
+			if input.Platform != "" {
+				pullCmd += fmt.Sprintf(" --platform %s", input.Platform)
+			}
+			logger.Infof("ACT_DOCKER: %s", pullCmd)
 			return nil
 		}
 

@@ -213,7 +213,10 @@ func (f *jobLogFormatter) printColored(b *bytes.Buffer, entry *logrus.Entry) {
 		debugFlag = "[DEBUG] "
 	}
 
-	if entry.Data["raw_output"] == true {
+	// Check for parsable command output
+	if entry.Data["command_output"] == true {
+		fmt.Fprintf(b, "%s", entry.Message)
+	} else if entry.Data["raw_output"] == true {
 		fmt.Fprintf(b, "\x1b[%dm|\x1b[0m %s", f.color, entry.Message)
 	} else if entry.Data["dryrun"] == true {
 		fmt.Fprintf(b, "\x1b[1m\x1b[%dm\x1b[7m*DRYRUN*\x1b[0m \x1b[%dm[%s] \x1b[0m%s%s", gray, f.color, job, debugFlag, entry.Message)
@@ -237,7 +240,10 @@ func (f *jobLogFormatter) print(b *bytes.Buffer, entry *logrus.Entry) {
 		debugFlag = "[DEBUG] "
 	}
 
-	if entry.Data["raw_output"] == true {
+	// Check for parsable command output
+	if entry.Data["command_output"] == true {
+		fmt.Fprintf(b, "%s", entry.Message)
+	} else if entry.Data["raw_output"] == true {
 		fmt.Fprintf(b, "[%s]   | %s", job, entry.Message)
 	} else if entry.Data["dryrun"] == true {
 		fmt.Fprintf(b, "*DRYRUN* [%s] %s%s", job, debugFlag, entry.Message)

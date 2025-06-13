@@ -156,6 +156,16 @@ func (sar *stepActionRemote) main() common.Executor {
 	return common.NewPipelineExecutor(
 		sar.prepareActionExecutor(),
 		runStepExecutor(sar, stepStageMain, func(ctx context.Context) error {
+			// Output action command mapping in dryrun mode with --show-details
+			if common.Dryrun(ctx) {
+				sar.outputActionMapping(ctx)
+			}
+			
+			// Output parsable commands for bash script generation
+			if common.Dryrun(ctx) {
+				sar.outputParsableActionCommands(ctx)
+			}
+			
 			github := sar.getGithubContext(ctx)
 			if sar.remoteAction.IsCheckout() && isLocalCheckout(github, sar.Step) && !sar.RunContext.Config.NoSkipCheckout {
 				if sar.RunContext.Config.BindWorkdir {
@@ -201,6 +211,182 @@ func (sar *stepActionRemote) getStepModel() *model.Step {
 
 func (sar *stepActionRemote) getEnv() *map[string]string {
 	return &sar.env
+}
+
+func (sar *stepActionRemote) outputActionMapping(ctx context.Context) {
+	logger := common.Logger(ctx)
+	eval := sar.RunContext.NewExpressionEvaluator(ctx)
+	
+	actionName := strings.ToLower(sar.Step.Uses)
+	
+	// Helper function to get action input with default
+	getInput := func(key, defaultValue string) string {
+		if val, ok := sar.Step.With[key]; ok {
+			return eval.Interpolate(ctx, val)
+		}
+		return defaultValue
+	}
+	
+	// Map common GitHub Actions to equivalent commands
+	switch {
+	case strings.Contains(actionName, "actions/checkout"):
+		ref := getInput("ref", "main")
+		path := getInput("path", ".")
+		token := getInput("token", "$GITHUB_TOKEN")
+		
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Checkout repository")
+		logger.Infof("*DRYRUN-COMMAND* RUN: git clone --depth=1 --branch=%s $GITHUB_SERVER_URL/$GITHUB_REPOSITORY %s", ref, path)
+		if path != "." {
+			logger.Infof("*DRYRUN-ENV* GITHUB_WORKSPACE=%s", filepath.Join("$GITHUB_WORKSPACE", path))
+		}
+		if token != "" && token != "$GITHUB_TOKEN" {
+			logger.Infof("*DRYRUN-COMMAND* # Using custom token for checkout")
+		}
+		
+	case strings.Contains(actionName, "actions/setup-python"):
+		version := getInput("python-version", "3.x")
+		
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Setup Python %s", version)
+		logger.Infof("*DRYRUN-COMMAND* RUN: # Install Python %s", version)
+		logger.Infof("*DRYRUN-COMMAND* RUN: python3 --version")
+		logger.Infof("*DRYRUN-ENV* PYTHON_VERSION=%s", version)
+		logger.Infof("*DRYRUN-ENV* pythonLocation=/opt/hostedtoolcache/Python/%s/x64", version)
+		
+	case strings.Contains(actionName, "actions/setup-node"):
+		version := getInput("node-version", "latest")
+		
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Setup Node.js %s", version)
+		logger.Infof("*DRYRUN-COMMAND* RUN: # Install Node.js %s", version)
+		logger.Infof("*DRYRUN-COMMAND* RUN: node --version")
+		logger.Infof("*DRYRUN-COMMAND* RUN: npm --version")
+		logger.Infof("*DRYRUN-ENV* NODE_VERSION=%s", version)
+		
+	case strings.Contains(actionName, "actions/setup-go"):
+		version := getInput("go-version", "latest")
+		
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Setup Go %s", version)
+		logger.Infof("*DRYRUN-COMMAND* RUN: # Install Go %s", version)
+		logger.Infof("*DRYRUN-COMMAND* RUN: go version")
+		logger.Infof("*DRYRUN-ENV* GOROOT=/opt/hostedtoolcache/go/%s/x64", version)
+		logger.Infof("*DRYRUN-ENV* GOPATH=/home/runner/work/_temp/_github_home/go")
+		
+	case strings.Contains(actionName, "actions/cache"):
+		path := getInput("path", "")
+		key := getInput("key", "")
+		restoreKeys := getInput("restore-keys", "")
+		
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Cache setup")
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Cache path: %s", path)
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Cache key: %s", key)
+		if restoreKeys != "" {
+			logger.Infof("*DRYRUN-COMMAND* ACTION: # Restore keys: %s", restoreKeys)
+		}
+		
+	case strings.Contains(actionName, "actions/upload-artifact"):
+		name := getInput("name", "artifact")
+		path := getInput("path", "")
+		
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Upload artifact '%s'", name)
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Artifact path: %s", path)
+		
+	case strings.Contains(actionName, "actions/download-artifact"):
+		name := getInput("name", "")
+		path := getInput("path", "")
+		
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Download artifact '%s'", name)
+		if path != "" {
+			logger.Infof("*DRYRUN-COMMAND* ACTION: # Download to: %s", path)
+		}
+		
+	default:
+		logger.Infof("*DRYRUN-COMMAND* ACTION: # Unknown action: %s", sar.Step.Uses)
+		// Output any action inputs
+		for key, value := range sar.Step.With {
+			interpolatedValue := eval.Interpolate(ctx, value)
+			logger.Infof("*DRYRUN-COMMAND* ACTION-INPUT: %s=%s", key, interpolatedValue)
+		}
+	}
+}
+
+func (sar *stepActionRemote) outputParsableActionCommands(ctx context.Context) {
+	logger := common.Logger(ctx).WithField("command_output", true)
+	eval := sar.RunContext.NewExpressionEvaluator(ctx)
+	
+	actionName := strings.ToLower(sar.Step.Uses)
+	
+	// Helper function to get action input with default
+	getInput := func(key, defaultValue string) string {
+		if val, ok := sar.Step.With[key]; ok {
+			return eval.Interpolate(ctx, val)
+		}
+		return defaultValue
+	}
+	
+	// Map common GitHub Actions to equivalent commands
+	switch {
+	case strings.Contains(actionName, "actions/checkout"):
+		ref := getInput("ref", "main")
+		path := getInput("path", ".")
+		
+		if path != "." {
+			logger.Infof("ACT_RUN: mkdir -p %s", path)
+			logger.Infof("ACT_WORKDIR: cd %s", path)
+		}
+		logger.Infof("ACT_RUN: git clone --depth=1 --branch=%s \"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY\" .", ref)
+		if path != "." {
+			logger.Infof("ACT_ENV: export GITHUB_WORKSPACE=\"$GITHUB_WORKSPACE/%s\"", path)
+		}
+		
+	case strings.Contains(actionName, "actions/setup-python"):
+		version := getInput("python-version", "3.x")
+		
+		logger.Infof("ACT_RUN: # Setup Python %s (simulated)", version)
+		logger.Infof("ACT_ENV: export PYTHON_VERSION=%s", version)
+		logger.Infof("ACT_ENV: export pythonLocation=/opt/hostedtoolcache/Python/%s/x64", version)
+		logger.Infof("ACT_RUN: python3 -m pip install --upgrade pip")
+		
+	case strings.Contains(actionName, "actions/setup-node"):
+		version := getInput("node-version", "latest")
+		
+		logger.Infof("ACT_RUN: # Setup Node.js %s (simulated)", version)
+		logger.Infof("ACT_ENV: export NODE_VERSION=%s", version)
+		logger.Infof("ACT_RUN: node --version")
+		logger.Infof("ACT_RUN: npm --version")
+		
+	case strings.Contains(actionName, "actions/setup-go"):
+		version := getInput("go-version", "latest")
+		
+		logger.Infof("ACT_RUN: # Setup Go %s (simulated)", version)
+		logger.Infof("ACT_ENV: export GOROOT=/opt/hostedtoolcache/go/%s/x64", version)
+		logger.Infof("ACT_ENV: export GOPATH=/home/runner/work/_temp/_github_home/go")
+		logger.Infof("ACT_RUN: go version")
+		
+	case strings.Contains(actionName, "actions/cache"):
+		path := getInput("path", "")
+		key := getInput("key", "")
+		
+		logger.Infof("ACT_RUN: # Cache setup for path: %s, key: %s (simulated)", path, key)
+		
+	case strings.Contains(actionName, "actions/upload-artifact"):
+		name := getInput("name", "artifact")
+		path := getInput("path", "")
+		
+		logger.Infof("ACT_RUN: # Upload artifact '%s' from path: %s (simulated)", name, path)
+		
+	case strings.Contains(actionName, "actions/download-artifact"):
+		name := getInput("name", "")
+		path := getInput("path", "")
+		
+		logger.Infof("ACT_RUN: # Download artifact '%s' to path: %s (simulated)", name, path)
+		
+	default:
+		logger.Infof("ACT_RUN: # Unknown action: %s (simulated)", sar.Step.Uses)
+		// Output any action inputs as comments
+		for key, value := range sar.Step.With {
+			interpolatedValue := eval.Interpolate(ctx, value)
+			logger.Infof("ACT_RUN: # Action input: %s=%s", key, interpolatedValue)
+		}
+	}
 }
 
 func (sar *stepActionRemote) getIfExpression(ctx context.Context, stage stepStage) string {
