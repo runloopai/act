@@ -11,6 +11,9 @@ import (
 
 func NewDockerNetworkCreateExecutor(name string) common.Executor {
 	return func(ctx context.Context) error {
+		if common.Dryrun(ctx) {
+			return nil
+		}
 		cli, err := GetDockerClient(ctx)
 		if err != nil {
 			return err
@@ -44,6 +47,9 @@ func NewDockerNetworkCreateExecutor(name string) common.Executor {
 
 func NewDockerNetworkRemoveExecutor(name string) common.Executor {
 	return func(ctx context.Context) error {
+		if common.Dryrun(ctx) {
+			return nil
+		}
 		cli, err := GetDockerClient(ctx)
 		if err != nil {
 			return err
