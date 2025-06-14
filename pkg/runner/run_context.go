@@ -332,7 +332,7 @@ func (rc *RunContext) startJobContainer() common.Executor {
 			}
 
 			serviceContainerName := createContainerName(rc.jobContainerName(), serviceID)
-			c := container.NewContainer(&container.NewContainerInput{
+			c := container.NewContainerWithContext(ctx, &container.NewContainerInput{
 				Name:           serviceContainerName,
 				WorkingDir:     ext.ToContainerPath(rc.Config.Workdir),
 				Image:          imageName,
@@ -397,7 +397,7 @@ func (rc *RunContext) startJobContainer() common.Executor {
 			jobContainerNetwork = "host"
 		}
 
-		rc.JobContainer = container.NewContainer(&container.NewContainerInput{
+		rc.JobContainer = container.NewContainerWithContext(ctx, &container.NewContainerInput{
 			Cmd:            nil,
 			Entrypoint:     []string{"tail", "-f", "/dev/null"},
 			WorkingDir:     ext.ToContainerPath(rc.Config.Workdir),

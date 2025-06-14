@@ -113,7 +113,7 @@ func (sd *stepDocker) newStepContainer(ctx context.Context, image string, cmd []
 	envList = append(envList, fmt.Sprintf("%s=%s", "RUNNER_TEMP", "/tmp"))
 
 	binds, mounts := rc.GetBindsAndMounts()
-	stepContainer := ContainerNewContainer(&container.NewContainerInput{
+	stepContainer := container.NewContainerWithContext(ctx, &container.NewContainerInput{
 		Cmd:         cmd,
 		Entrypoint:  entrypoint,
 		WorkingDir:  rc.JobContainer.ToContainerPath(rc.Config.Workdir),

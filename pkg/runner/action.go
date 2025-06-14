@@ -417,7 +417,7 @@ func newStepContainer(ctx context.Context, step step, image string, cmd []string
 	if rc.IsHostEnv(ctx) {
 		networkMode = "default"
 	}
-	stepContainer := container.NewContainer(&container.NewContainerInput{
+	stepContainer := container.NewContainerWithContext(ctx, &container.NewContainerInput{
 		Cmd:         cmd,
 		Entrypoint:  entrypoint,
 		WorkingDir:  rc.JobContainer.ToContainerPath(rc.Config.Workdir),
